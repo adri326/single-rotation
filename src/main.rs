@@ -8,14 +8,14 @@ use regions::*;
 
 fn main() {
     let mut tree = RegionTree::new();
-    let mut steps: usize = 8;
+    let mut steps: usize = 4;
     let mut interval: u32 = 100;
     parse_rle(&mut tree, &mut steps, &mut interval);
     // let mut rng = rand::thread_rng();
     let mut total_duration = Duration::new(0, 0);
     loop {
         let offset = (tree.step as i64 / 12) * 2;
-        for y in -4..=14 {
+        for y in -4..=24 {
             // for x in (offset - 4)..=(offset + 4) {
             for x in -4..=96 {
                 let n = tree.get(x, y);
@@ -41,7 +41,7 @@ fn main() {
         let sps = (tree.step as f64 / total_duration.as_micros() as f64) * 1.0e6;
         print!("\x1b[0K");
         print!("   {:?} steps/s", sps);
-        print!("\x1b[20F");
+        print!("\x1b[30F");
         if let Some(duration) = Duration::new(0, interval * 1_000_000).checked_sub(start.elapsed()) {
             std::thread::sleep(duration);
         }
@@ -49,11 +49,11 @@ fn main() {
 }
 
 fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32) {
+    let mut x = 0;
+    let mut sx = 0;
+    let mut y = 0;
     while let Some(Ok(rle)) = std::io::stdin().lock().lines().next() {
         let mut count = String::new();
-        let mut x = 0;
-        let mut sx = 0;
-        let mut y = 0;
         let mut input_x = false;
         let mut input_y = false;
         let mut input_steps = false;
@@ -132,6 +132,14 @@ fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32) {
         } else if input_y {
             if count.len() > 0 {
                 y = count.parse::<i64>().unwrap();
+            }
+        } else if input_steps {
+            if count.len() > 0 {
+                *steps = count.parse::<usize>().unwrap();
+            }
+        } else if input_interval {
+            if count.len() > 0 {
+                *interval = count.parse::<u32>().unwrap();
             }
         }
     }
