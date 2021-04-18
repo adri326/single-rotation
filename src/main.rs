@@ -6,11 +6,11 @@ use rand::Rng;
 pub mod regions;
 use regions::*;
 
-const STEPS: usize = 8 * 7;
-
 fn main() {
     let mut tree = RegionTree::new();
-    parse_rle(&mut tree);
+    let mut steps: usize = 8;
+    let mut interval: u32 = 100;
+    parse_rle(&mut tree, &mut steps, &mut interval);
     // let mut rng = rand::thread_rng();
     let mut total_duration = Duration::new(0, 0);
     loop {
@@ -34,7 +34,7 @@ fn main() {
         println!("Step: {}", tree.step);
 
         let start = Instant::now();
-        for _ in 0..STEPS {
+        for _ in 0..steps {
             tree.tick();
         }
         total_duration += start.elapsed();
@@ -42,13 +42,13 @@ fn main() {
         print!("\x1b[0K");
         print!("   {:?} steps/s", sps);
         print!("\x1b[20F");
-        if let Some(duration) = Duration::new(0, 1000_000_000).checked_sub(start.elapsed()) {
+        if let Some(duration) = Duration::new(0, interval * 1_000_000).checked_sub(start.elapsed()) {
             std::thread::sleep(duration);
         }
     }
 }
 
-fn parse_rle(tree: &mut RegionTree) {
+fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32) {
     while let Some(Ok(rle)) = std::io::stdin().lock().lines().next() {
         let mut count = String::new();
         let mut x = 0;
@@ -56,11 +56,17 @@ fn parse_rle(tree: &mut RegionTree) {
         let mut y = 0;
         let mut input_x = false;
         let mut input_y = false;
+        let mut input_steps = false;
+        let mut input_interval = false;
         for c in rle.chars() {
             if c == 'x' {
                 input_x = true;
-            } if c == 'y' {
+            } else if c == 'y' {
                 input_y = true;
+            } else if c == 's' {
+                input_steps = true;
+            } else if c == 'i' {
+                input_interval = true;
             } else if c >= '0' && c <= '9' {
                 count.push(c);
             } else if input_x {
@@ -75,6 +81,18 @@ fn parse_rle(tree: &mut RegionTree) {
                     y = count.parse::<i64>().unwrap();
                     count = String::new();
                     input_y = false;
+                }
+            } else if input_steps {
+                if count.len() > 0 {
+                    *steps = count.parse::<usize>().unwrap();
+                    count = String::new();
+                    input_steps = false;
+                }
+            } else if input_interval {
+                if count.len() > 0 {
+                    *interval = count.parse::<u32>().unwrap();
+                    count = String::new();
+                    input_interval = false;
                 }
             } else if c == 'o' {
                 if count.len() > 0 {
