@@ -31,11 +31,11 @@ Then, hit enter and the simulation will begin.
 The `x` and `y` parameters are optional and will default to `0`.
 These are the parameters that are accepted:
 
-- `x`, sets the `X` coordinate of the top-left corner (unlike classical RLE, where the `x` argument corresponds to the width of the pattern)
-- `y`, sets the `Y` coordinate of the top-left corner (unlike classical RLE, where the `y` argument corresponds to the height of the pattern)
+- `x`, sets the `X` coordinate of the top-left corner (unlike classical RLE, where the `x` argument corresponds to the width of the pattern, default `0`)
+- `y`, sets the `Y` coordinate of the top-left corner (unlike classical RLE, where the `y` argument corresponds to the height of the pattern, default `0`)
 - `s`, which sets the number of simulation step between frames (default `4`)
 - `i`, which sets the minimum time interval between frames, in milliseconds (default `100`)
-- `u`, the "smoothing" factor for the interpolation in the rendered view; a value of `4` will visually hide the 4-step oscillator nature of isolated cells
+- `u`, the "smoothing" factor for the interpolation in the rendered view; a value of `4` will visually hide the 4-step oscillator nature of isolated cells (default `4`)
 
 When put together, it looks like this:
 

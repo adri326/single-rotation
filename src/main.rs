@@ -40,7 +40,6 @@ fn main() {
     loop {
         // let offset = (tree.step as i64 / 12) * 2;
 
-
         for y in -4..=24 {
             // for x in (offset - 4)..=(offset + 4) {
             for x in -4..=96 {
