@@ -6,30 +6,45 @@ use rand::Rng;
 pub mod regions;
 use regions::*;
 
+pub mod display;
+
 fn main() {
+    let cli = std::env::args().any(|arg| arg == "--cli");
     let mut tree = RegionTree::new();
     let mut steps: usize = 4;
     let mut interval: u32 = 100;
     parse_rle(&mut tree, &mut steps, &mut interval);
     // let mut rng = rand::thread_rng();
     let mut total_duration = Duration::new(0, 0);
+
+    let mut window = if !cli {
+        Some(display::spawn())
+    } else {
+        None
+    };
+
     loop {
         let offset = (tree.step as i64 / 12) * 2;
-        for y in -4..=24 {
-            // for x in (offset - 4)..=(offset + 4) {
-            for x in -4..=96 {
-                let n = tree.get(x, y);
-                if n > 0 {
-                    if tree.cells.len() <= 10 {
-                        print!("{}", n);
+
+        if let Some(ref mut window) = &mut window {
+            display::draw(window, &tree);
+        } else {
+            for y in -4..=24 {
+                // for x in (offset - 4)..=(offset + 4) {
+                for x in -4..=96 {
+                    let n = tree.get(x, y);
+                    if n > 0 {
+                        if tree.cells.len() <= 10 {
+                            print!("{}", n);
+                        } else {
+                            print!("#");
+                        }
                     } else {
-                        print!("#");
+                        print!("·");
                     }
-                } else {
-                    print!("·");
                 }
+                print!("\n");
             }
-            print!("\n");
         }
         println!("Step: {}", tree.step);
 
@@ -41,7 +56,11 @@ fn main() {
         let sps = (tree.step as f64 / total_duration.as_micros() as f64) * 1.0e6;
         print!("\x1b[0K");
         print!("   {:?} steps/s", sps);
-        print!("\x1b[30F");
+        if window.is_some() {
+            print!("\x1b[1F");
+        } else {
+            print!("\x1b[30F");
+        }
         if let Some(duration) = Duration::new(0, interval * 1_000_000).checked_sub(start.elapsed()) {
             std::thread::sleep(duration);
         }
