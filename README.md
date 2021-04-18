@@ -35,6 +35,7 @@ These are the parameters that are accepted:
 - `y`, sets the `Y` coordinate of the top-left corner (unlike classical RLE, where the `y` argument corresponds to the height of the pattern)
 - `s`, which sets the number of simulation step between frames (default `4`)
 - `i`, which sets the minimum time interval between frames, in milliseconds (default `100`)
+- `u`, the "smoothing" factor for the interpolation in the rendered view; a value of `4` will visually hide the 4-step oscillator nature of isolated cells
 
 When put together, it looks like this:
 
@@ -47,4 +48,10 @@ You can also use shellscript notation to redirect stdin from a file:
 
 ```sh
 ./target/release/single-rotation < examples/lightest-slow.rle
+```
+
+By default, a CLI representation of the simulation will be displayed. You can switch to a window version instead by running it with the `-g` option:
+
+```sh
+./target/release/single-rotation -g < examples/lightest-slow.rle
 ```

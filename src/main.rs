@@ -1,51 +1,63 @@
 use std::time::{Duration, Instant};
 use std::io::BufRead;
 use std::str::FromStr;
-use rand::Rng;
+// use rand::Rng;
 
 pub mod regions;
 use regions::*;
 
 pub mod display;
+pub mod lanczos;
 
 fn main() {
-    let cli = std::env::args().any(|arg| arg == "--cli");
+    let graphical = std::env::args().any(|arg| arg == "-g");
     let mut tree = RegionTree::new();
     let mut steps: usize = 4;
     let mut interval: u32 = 100;
-    parse_rle(&mut tree, &mut steps, &mut interval);
+    let mut smoothing: usize = 1;
+    parse_rle(&mut tree, &mut steps, &mut interval, &mut smoothing);
+
+    let fps = 1000 / interval;
+
     // let mut rng = rand::thread_rng();
     let mut total_duration = Duration::new(0, 0);
 
-    let mut window = if !cli {
-        Some(display::spawn())
-    } else {
-        None
-    };
-
-    loop {
-        let offset = (tree.step as i64 / 12) * 2;
-
-        if let Some(ref mut window) = &mut window {
-            display::draw(window, &tree);
-        } else {
-            for y in -4..=24 {
-                // for x in (offset - 4)..=(offset + 4) {
-                for x in -4..=96 {
-                    let n = tree.get(x, y);
-                    if n > 0 {
-                        if tree.cells.len() <= 10 {
-                            print!("{}", n);
-                        } else {
-                            print!("#");
-                        }
-                    } else {
-                        print!("·");
-                    }
-                }
-                print!("\n");
+    if graphical {
+        let mut window = display::spawn();
+        let mut interpolator = lanczos::LanczosInterpolator::new(tree, 2, (50 / fps as usize).max(1), 4, steps);
+        println!("");
+        loop {
+            let start = Instant::now();
+            display::draw(&mut window, &mut interpolator);
+            print!("\x1b[1F");
+            println!("Step: {}", interpolator.tree.step);
+            if let Some(duration) = Duration::new(0, 20_000_000).checked_sub(start.elapsed()) {
+                std::thread::sleep(duration);
             }
         }
+    }
+
+    loop {
+        // let offset = (tree.step as i64 / 12) * 2;
+
+
+        for y in -4..=24 {
+            // for x in (offset - 4)..=(offset + 4) {
+            for x in -4..=96 {
+                let n = tree.get(x, y);
+                if n > 0 {
+                    if tree.cells.len() <= 10 {
+                        print!("{}", n);
+                    } else {
+                        print!("#");
+                    }
+                } else {
+                    print!("·");
+                }
+            }
+            print!("\n");
+        }
+
         println!("Step: {}", tree.step);
 
         let start = Instant::now();
@@ -56,18 +68,14 @@ fn main() {
         let sps = (tree.step as f64 / total_duration.as_micros() as f64) * 1.0e6;
         print!("\x1b[0K");
         print!("   {:?} steps/s", sps);
-        if window.is_some() {
-            print!("\x1b[1F");
-        } else {
-            print!("\x1b[30F");
-        }
+        print!("\x1b[30F");
         if let Some(duration) = Duration::new(0, interval * 1_000_000).checked_sub(start.elapsed()) {
             std::thread::sleep(duration);
         }
     }
 }
 
-fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32) {
+fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32, smoothing: &mut usize) {
     let mut x = 0;
     let mut sx = 0;
     let mut y = 0;
@@ -77,6 +85,8 @@ fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32) {
         let mut input_y = false;
         let mut input_steps = false;
         let mut input_interval = false;
+        let mut input_smoothing = false;
+        let mut sign = 1;
         for c in rle.chars() {
             if c == 'x' {
                 input_x = true;
@@ -86,18 +96,24 @@ fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32) {
                 input_steps = true;
             } else if c == 'i' {
                 input_interval = true;
+            } else if c == 'u' {
+                input_smoothing = true;
             } else if c >= '0' && c <= '9' {
                 count.push(c);
+            } else if c == '-' {
+                sign = -1;
             } else if input_x {
                 if count.len() > 0 {
-                    sx = count.parse::<i64>().unwrap();
+                    sx = count.parse::<i64>().unwrap() * sign as i64;
                     x = sx;
+                    sign = 1;
                     count = String::new();
                     input_x = false;
                 }
             } else if input_y {
                 if count.len() > 0 {
-                    y = count.parse::<i64>().unwrap();
+                    y = count.parse::<i64>().unwrap() * sign as i64;
+                    sign = 1;
                     count = String::new();
                     input_y = false;
                 }
@@ -112,6 +128,12 @@ fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32) {
                     *interval = count.parse::<u32>().unwrap();
                     count = String::new();
                     input_interval = false;
+                }
+            } else if input_smoothing {
+                if count.len() > 0 {
+                    *smoothing = count.parse::<usize>().unwrap();
+                    count = String::new();
+                    input_smoothing = false;
                 }
             } else if c == 'o' {
                 if count.len() > 0 {
@@ -159,6 +181,10 @@ fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32) {
         } else if input_interval {
             if count.len() > 0 {
                 *interval = count.parse::<u32>().unwrap();
+            }
+        } else if input_smoothing {
+            if count.len() > 0 {
+                *smoothing = count.parse::<usize>().unwrap();
             }
         }
     }
