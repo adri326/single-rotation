@@ -1,35 +1,18 @@
 use std::time::{Duration, Instant};
+use std::io::BufRead;
+use std::str::FromStr;
 use rand::Rng;
 
 pub mod regions;
 use regions::*;
 
-const STEPS: usize = 72;
+const STEPS: usize = 8 * 7;
 
 fn main() {
     let mut tree = RegionTree::new();
+    parse_rle(&mut tree);
     // let mut rng = rand::thread_rng();
     let mut total_duration = Duration::new(0, 0);
-    tree.tick();
-    tree.insert(1, 0);
-    tree.insert(1, 1);
-    tree.insert(1, 2);
-    tree.insert(4, 1);
-    tree.insert(5, 1);
-    tree.insert(3, 2);
-    // for _ in 0..500 {
-    //     tree.insert(rng.gen_range(0..100), rng.gen_range(0..100));
-    // }
-    // for x in -1..101 {
-    //     tree.insert(-1, x);
-    //     tree.insert(-2, x);
-    //     tree.insert(101, x);
-    //     tree.insert(102, x);
-    //     tree.insert(x, -1);
-    //     tree.insert(x, -2);
-    //     tree.insert(x, 101);
-    //     tree.insert(x, 102);
-    // }
     loop {
         let offset = (tree.step as i64 / 12) * 2;
         for y in -4..=14 {
@@ -37,9 +20,13 @@ fn main() {
             for x in -4..=96 {
                 let n = tree.get(x, y);
                 if n > 0 {
-                    print!("{}", n);
+                    if tree.cells.len() <= 10 {
+                        print!("{}", n);
+                    } else {
+                        print!("#");
+                    }
                 } else {
-                    print!(" ");
+                    print!("·");
                 }
             }
             print!("\n");
@@ -55,8 +42,79 @@ fn main() {
         print!("\x1b[0K");
         print!("   {:?} steps/s", sps);
         print!("\x1b[20F");
-        if let Some(duration) = Duration::new(0, 100_000_000).checked_sub(start.elapsed()) {
+        if let Some(duration) = Duration::new(0, 1000_000_000).checked_sub(start.elapsed()) {
             std::thread::sleep(duration);
+        }
+    }
+}
+
+fn parse_rle(tree: &mut RegionTree) {
+    while let Some(Ok(rle)) = std::io::stdin().lock().lines().next() {
+        let mut count = String::new();
+        let mut x = 0;
+        let mut sx = 0;
+        let mut y = 0;
+        let mut input_x = false;
+        let mut input_y = false;
+        for c in rle.chars() {
+            if c == 'x' {
+                input_x = true;
+            } if c == 'y' {
+                input_y = true;
+            } else if c >= '0' && c <= '9' {
+                count.push(c);
+            } else if input_x {
+                if count.len() > 0 {
+                    sx = count.parse::<i64>().unwrap();
+                    x = sx;
+                    count = String::new();
+                    input_x = false;
+                }
+            } else if input_y {
+                if count.len() > 0 {
+                    y = count.parse::<i64>().unwrap();
+                    count = String::new();
+                    input_y = false;
+                }
+            } else if c == 'o' {
+                if count.len() > 0 {
+                    for _ in 0..usize::from_str(&count).unwrap() {
+                        tree.insert(x, y);
+                        x += 1;
+                    }
+                    count = String::new();
+                } else {
+                    tree.insert(x, y);
+                    x += 1;
+                }
+            } else if c == 'b' {
+                if count.len() > 0 {
+                    x += count.parse::<i64>().unwrap();
+                    count = String::new();
+                } else {
+                    x += 1;
+                }
+            } else if c == '$' {
+                if count.len() > 0 {
+                    y += count.parse::<i64>().unwrap();
+                    x = sx;
+                    count = String::new();
+                } else {
+                    y += 1;
+                    x = sx;
+                }
+            } else if c == '!' {
+                return
+            }
+        }
+        if input_x {
+            if count.len() > 0 {
+                x = count.parse::<i64>().unwrap();
+            }
+        } else if input_y {
+            if count.len() > 0 {
+                y = count.parse::<i64>().unwrap();
+            }
         }
     }
 }
