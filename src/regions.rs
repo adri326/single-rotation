@@ -31,7 +31,7 @@ pub struct Region {
 #[derive(Debug, Clone)]
 pub struct RegionTree {
     pub regions: Vec<Region>,
-    pub tree: HashMap<(i64, i64), usize>,
+    pub hashmap: HashMap<(i64, i64), usize>,
     pub cells: Vec<(i64, i64)>,
     pub colors: Vec<usize>,
     pub step: usize,
@@ -55,7 +55,7 @@ impl RegionTree {
     pub fn new() -> Self {
         Self {
             regions: Vec::new(),
-            tree: HashMap::new(),
+            hashmap: HashMap::new(),
             step: 0,
             cells: vec![(0, 0)],
             colors: vec![0],
@@ -64,9 +64,9 @@ impl RegionTree {
 
     /// Gets the cell at `x`, `y`
     pub fn get(&self, x: i64, y: i64) -> usize {
-        let (nearest_x, nearest_y) = get_nearest(x, y);
+        let (nearest_x, nearest_y) = nearest_region(x, y);
 
-        if let Some(&region) = self.tree.get(&(nearest_x, nearest_y)) {
+        if let Some(&region) = self.hashmap.get(&(nearest_x, nearest_y)) {
             self.regions[region].cells[(y - nearest_y) as usize][(x - nearest_x) as usize]
         } else {
             0
@@ -76,8 +76,8 @@ impl RegionTree {
     /// Inserts a cell at `x`, `y`.
     /// Does nothing if a cell already exists there
     pub fn insert(&mut self, x: i64, y: i64, color: usize) {
-        let nearest = get_nearest(x, y);
-        let region = if let Some(region) = self.tree.get(&nearest) {
+        let nearest = nearest_region(x, y);
+        let region = if let Some(region) = self.hashmap.get(&nearest) {
             *region
         } else {
             self.insert_empty_region(nearest.0, nearest.1)
@@ -98,11 +98,11 @@ impl RegionTree {
     /// Inserts an empty region at `x`, `y`. Does not verify that there already is an empty region there
     fn insert_empty_region(&mut self, x: i64, y: i64) -> usize {
         let r = self.regions.len();
-        self.tree.insert((x, y), r);
+        self.hashmap.insert((x, y), r);
         self.regions.push(Region::new(x, y));
 
         for (i, (dx, dy)) in NEIGHBORS.iter().enumerate() {
-            if let Some(&n) = self.tree.get(&(x + R * dx, y + R * dy)) {
+            if let Some(&n) = self.hashmap.get(&(x + R * dx, y + R * dy)) {
                 self.regions[n].neighbors[(i + 4) % 8] = Some(r);
                 self.regions[r].neighbors[i] = Some(n);
             }
@@ -136,7 +136,7 @@ impl RegionTree {
                 let mut n = 0;
 
                 for &index in &to_remove {
-                    self.tree.remove(&(self.regions[index].x, self.regions[index].y));
+                    self.hashmap.remove(&(self.regions[index].x, self.regions[index].y));
                 }
                 self.regions.retain(|_| {
                     n += 1;
@@ -147,19 +147,19 @@ impl RegionTree {
         }
 
         for (index, region) in self.regions.iter_mut().enumerate() {
-            self.tree.insert((region.x, region.y), index);
+            self.hashmap.insert((region.x, region.y), index);
         }
 
         for region in self.regions.iter_mut() {
             region.neighbors = [
-                self.tree.get(&(region.x, region.y - R)).map(|x| *x),
-                self.tree.get(&(region.x + R, region.y - R)).map(|x| *x),
-                self.tree.get(&(region.x + R, region.y)).map(|x| *x),
-                self.tree.get(&(region.x + R, region.y + R)).map(|x| *x),
-                self.tree.get(&(region.x, region.y + R)).map(|x| *x),
-                self.tree.get(&(region.x - R, region.y + R)).map(|x| *x),
-                self.tree.get(&(region.x - R, region.y)).map(|x| *x),
-                self.tree.get(&(region.x - R, region.y - R)).map(|x| *x),
+                self.hashmap.get(&(region.x, region.y - R)).map(|x| *x),
+                self.hashmap.get(&(region.x + R, region.y - R)).map(|x| *x),
+                self.hashmap.get(&(region.x + R, region.y)).map(|x| *x),
+                self.hashmap.get(&(region.x + R, region.y + R)).map(|x| *x),
+                self.hashmap.get(&(region.x, region.y + R)).map(|x| *x),
+                self.hashmap.get(&(region.x - R, region.y + R)).map(|x| *x),
+                self.hashmap.get(&(region.x - R, region.y)).map(|x| *x),
+                self.hashmap.get(&(region.x - R, region.y - R)).map(|x| *x),
             ];
         }
 
@@ -319,7 +319,7 @@ fn update_simple(region: &mut Region, cells: &mut Vec<(i64, i64)>, offset: usize
 }
 
 /// Gets the region coordinate of the nearest region (that where the `(x, y)` belongs)
-fn get_nearest(x: i64, y: i64) -> (i64, i64) {
+pub fn nearest_region(x: i64, y: i64) -> (i64, i64) {
     (
         x.div_euclid(R) * R,
         y.div_euclid(R) * R

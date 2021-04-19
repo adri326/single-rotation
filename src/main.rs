@@ -8,6 +8,7 @@ use regions::*;
 
 pub mod display;
 pub mod lanczos;
+pub mod capture;
 
 fn main() {
     let graphical = std::env::args().any(|arg| arg == "-g");
