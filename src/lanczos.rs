@@ -1,5 +1,6 @@
 use crate::regions::RegionTree;
 use std::collections::VecDeque;
+use std::time::Duration;
 
 pub const LANCZOS_WIDTH: f32 = 4.0;
 
@@ -34,8 +35,9 @@ pub struct LanczosInterpolator {
     pub kernel: Vec<f32>,
     pub order: usize,
     pub timesteps: usize,
-    pub time: usize,
+    pub time: f32,
     pub smoothing: usize,
+    pub interval: u32,
     pub step_delta: usize,
 
     pub states: VecDeque<Vec<(i64, i64)>>,
@@ -43,13 +45,14 @@ pub struct LanczosInterpolator {
 }
 
 impl LanczosInterpolator {
-    pub fn new(tree: RegionTree, order: usize, timesteps: usize, smoothing: usize, step_delta: usize) -> Self {
+    pub fn new(tree: RegionTree, order: usize, timesteps: usize, smoothing: usize, interval: u32, step_delta: usize) -> Self {
         Self {
             kernel: lanczos_kernel(order, timesteps * smoothing),
             order,
             timesteps,
-            time: 0,
+            time: 0.0,
             smoothing,
+            interval,
             step_delta,
 
             states: VecDeque::with_capacity(2 * order * smoothing),
@@ -62,11 +65,12 @@ impl LanczosInterpolator {
         2 * self.order * self.smoothing
     }
 
-    pub fn get(&mut self) -> Vec<(f32, f32)> {
-        self.time += 1;
+    pub fn get(&mut self, dt: Duration) -> Vec<(f32, f32)> {
+        let dt = dt.as_millis() as f32 / self.interval as f32;
+        self.time += dt;
 
-        while self.time >= self.timesteps {
-            self.time -= self.timesteps;
+        while self.time.floor() >= 1.0 {
+            self.time -= 1.0;
             self.states.pop_front();
         }
 
@@ -77,17 +81,25 @@ impl LanczosInterpolator {
             }
         }
 
-        self.interpolate(self.timesteps - self.time - 1)
+        self.interpolate()
     }
 
-    fn interpolate(&self, offset: usize) -> Vec<(f32, f32)> {
+    fn interpolate(&self) -> Vec<(f32, f32)> {
+        let offset = (1.0 - self.time) * self.timesteps as f32;
+        let offset_int = offset.floor() as usize;
+        let offset_frac = offset.fract();
+
         if self.states.len() == 0 {
             return vec![]
         }
+
         let mut res = vec![(0.0, 0.0); self.states[0].len() - 1];
 
         for (i, state) in self.states.iter().enumerate() {
-            let k = self.kernel[i * self.timesteps + offset] / self.smoothing as f32;
+            let k = (
+                self.kernel[i * self.timesteps + offset_int] * (1.0 - offset_frac)
+                + self.kernel[i * self.timesteps + offset_int + 1] * offset_frac
+             ) / self.smoothing as f32;
             for ((ref mut x, ref mut y), (sx, sy)) in res.iter_mut().zip(state.iter().skip(1)) {
                 *x += *sx as f32 * k;
                 *y += *sy as f32 * k;

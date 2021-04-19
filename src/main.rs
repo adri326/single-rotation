@@ -24,11 +24,13 @@ fn main() {
 
     if graphical {
         let mut window = display::spawn();
-        let mut interpolator = lanczos::LanczosInterpolator::new(tree, 2, (50 / fps as usize).max(1), 4, steps);
+        let mut interpolator = lanczos::LanczosInterpolator::new(tree, 2, (50 / fps as usize).max(1), 4, interval, steps);
         println!("");
+        let mut previous_time = Instant::now();
         loop {
             let start = Instant::now();
-            display::draw(&mut window, &mut interpolator);
+            display::draw(&mut window, &mut interpolator, previous_time.elapsed());
+            previous_time = start;
             print!("\x1b[1F");
             println!("Step: {}", interpolator.tree.step);
             if let Some(duration) = Duration::new(0, 20_000_000).checked_sub(start.elapsed()) {
