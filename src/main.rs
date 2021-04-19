@@ -12,9 +12,9 @@ pub mod lanczos;
 fn main() {
     let graphical = std::env::args().any(|arg| arg == "-g");
     let mut tree = RegionTree::new();
-    let mut steps: usize = 4;
+    let mut steps: usize = 1;
     let mut interval: u32 = 100;
-    let mut smoothing: usize = 1;
+    let mut smoothing: usize = 4;
     parse_rle(&mut tree, &mut steps, &mut interval, &mut smoothing);
 
     let fps = 1000 / interval;
@@ -24,10 +24,10 @@ fn main() {
 
     if graphical {
         let mut window = display::spawn();
-        let mut interpolator = lanczos::LanczosInterpolator::new(tree, 2, (50 / fps as usize).max(1), smoothing, interval, steps);
+        let mut interpolator = lanczos::LanczosInterpolator::new(tree, 3, (50 / fps as usize).max(1), smoothing, interval, steps);
         println!("");
         let mut previous_time = Instant::now();
-        loop {
+        while window.is_open() && !window.is_key_down(minifb::Key::Escape) {
             let start = Instant::now();
             display::draw(&mut window, &mut interpolator, previous_time.elapsed());
             previous_time = start;
@@ -37,6 +37,7 @@ fn main() {
                 std::thread::sleep(duration);
             }
         }
+        return
     }
 
     loop {

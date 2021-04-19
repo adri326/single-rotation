@@ -3,9 +3,10 @@ use std::collections::VecDeque;
 use std::time::Duration;
 
 pub const LANCZOS_WIDTH: f32 = 4.0;
+pub type Prec = f64;
 
 /// The "sinc" mathematical function
-pub fn sinc(x: f32) -> f32 {
+pub fn sinc(x: Prec) -> Prec {
     let a = x.abs();
 
     if a > 1.0e-8 {
@@ -16,15 +17,15 @@ pub fn sinc(x: f32) -> f32 {
 }
 
 /// Returns the kernel for the Lanczos filter
-pub fn lanczos_kernel(order: usize, points: usize) -> Vec<f32> {
-    let order_f32 = order as f32;
-    let points_f32 = points as f32;
+pub fn lanczos_kernel(order: usize, points: usize) -> Vec<Prec> {
+    let order_float = order as Prec;
+    let points_float = points as Prec;
 
     let mut res = Vec::with_capacity(points * 2 + 2);
 
     for ix in -(order as isize * points as isize)..=(order as isize * points as isize + 1) {
-        let x = ix as f32 / points_f32 * std::f32::consts::PI;
-        res.push(sinc(x) * sinc(x / order_f32));
+        let x = ix as Prec / points_float * std::f64::consts::PI as Prec;
+        res.push(sinc(x) * sinc(x / order_float));
     }
 
     res
@@ -32,7 +33,7 @@ pub fn lanczos_kernel(order: usize, points: usize) -> Vec<f32> {
 
 /// A wrapper around RegionTree that interpolates the points based on the lanczos filter
 pub struct LanczosInterpolator {
-    pub kernel: Vec<f32>,
+    pub kernel: Vec<Prec>,
     pub order: usize,
     pub timesteps: usize,
     pub time: f32,
@@ -87,25 +88,26 @@ impl LanczosInterpolator {
     fn interpolate(&self) -> Vec<(f32, f32)> {
         let offset = (1.0 - self.time) * self.timesteps as f32;
         let offset_int = offset.floor() as usize;
-        let offset_frac = offset.fract();
+        let offset_frac = offset.fract() as Prec;
 
         if self.states.len() == 0 {
             return vec![]
         }
 
         let mut res = vec![(0.0, 0.0); self.states[0].len() - 1];
+        let reference = &self.states[self.required_states() / 2];
 
         for (i, state) in self.states.iter().enumerate() {
             let k = (
                 self.kernel[i * self.timesteps + offset_int] * (1.0 - offset_frac)
                 + self.kernel[i * self.timesteps + offset_int + 1] * offset_frac
-             ) / self.smoothing as f32;
-            for ((ref mut x, ref mut y), (sx, sy)) in res.iter_mut().zip(state.iter().skip(1)) {
-                *x += *sx as f32 * k;
-                *y += *sy as f32 * k;
+             ) / (self.smoothing as Prec);
+            for (j, ((ref mut x, ref mut y), (sx, sy))) in res.iter_mut().zip(state.iter().skip(1)).enumerate() {
+                *x += (*sx - reference[j + 1].0) as Prec * k;
+                *y += (*sy - reference[j + 1].1) as Prec * k;
             }
         }
 
-        res
+        res.into_iter().enumerate().map(|(i, (x, y))| (x as f32 + reference[i + 1].0 as f32, y as f32 + reference[i + 1].1 as f32)).collect()
     }
 }
