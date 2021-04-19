@@ -37,6 +37,8 @@ These are the parameters that are accepted:
 - `i`, which sets the minimum time interval between frames, in milliseconds (default `100`)
 - `u`, the "smoothing" factor for the interpolation in the rendered view; a value of `4` will visually hide the 4-step oscillator nature of isolated cells (default `4`)
 
+Additionally, the `c` tag allows you to change the color of the particle.
+
 When put together, it looks like this:
 
 ```

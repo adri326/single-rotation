@@ -20,9 +20,9 @@ pub fn lanczos_kernel(order: usize, points: usize) -> Vec<f32> {
     let order_f32 = order as f32;
     let points_f32 = points as f32;
 
-    let mut res = Vec::with_capacity(points * 2 + 1);
+    let mut res = Vec::with_capacity(points * 2 + 2);
 
-    for ix in -(order as isize * points as isize)..=(order as isize * points as isize) {
+    for ix in -(order as isize * points as isize)..=(order as isize * points as isize + 1) {
         let x = ix as f32 / points_f32 * std::f32::consts::PI;
         res.push(sinc(x) * sinc(x / order_f32));
     }

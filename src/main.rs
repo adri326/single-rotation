@@ -24,7 +24,7 @@ fn main() {
 
     if graphical {
         let mut window = display::spawn();
-        let mut interpolator = lanczos::LanczosInterpolator::new(tree, 2, (50 / fps as usize).max(1), 4, interval, steps);
+        let mut interpolator = lanczos::LanczosInterpolator::new(tree, 2, (50 / fps as usize).max(1), smoothing, interval, steps);
         println!("");
         let mut previous_time = Instant::now();
         loop {
@@ -80,6 +80,7 @@ fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32, smoot
     let mut x = 0;
     let mut sx = 0;
     let mut y = 0;
+    let mut color = 0;
     while let Some(Ok(rle)) = std::io::stdin().lock().lines().next() {
         let mut count = String::new();
         let mut input_x = false;
@@ -139,12 +140,12 @@ fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32, smoot
             } else if c == 'o' {
                 if count.len() > 0 {
                     for _ in 0..usize::from_str(&count).unwrap() {
-                        tree.insert(x, y);
+                        tree.insert(x, y, color);
                         x += 1;
                     }
                     count = String::new();
                 } else {
-                    tree.insert(x, y);
+                    tree.insert(x, y, color);
                     x += 1;
                 }
             } else if c == 'b' {
@@ -162,6 +163,13 @@ fn parse_rle(tree: &mut RegionTree, steps: &mut usize, interval: &mut u32, smoot
                 } else {
                     y += 1;
                     x = sx;
+                }
+            } else if c == 'c' {
+                if count.len() > 0 {
+                    color = count.parse::<usize>().unwrap();
+                    count = String::new();
+                } else {
+                    color = 0;
                 }
             } else if c == '!' {
                 return

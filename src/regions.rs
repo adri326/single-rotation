@@ -33,6 +33,7 @@ pub struct RegionTree {
     pub regions: Vec<Region>,
     pub tree: HashMap<(i64, i64), usize>,
     pub cells: Vec<(i64, i64)>,
+    pub colors: Vec<usize>,
     pub step: usize,
 }
 
@@ -57,6 +58,7 @@ impl RegionTree {
             tree: HashMap::new(),
             step: 0,
             cells: vec![(0, 0)],
+            colors: vec![0],
         }
     }
 
@@ -73,7 +75,7 @@ impl RegionTree {
 
     /// Inserts a cell at `x`, `y`.
     /// Does nothing if a cell already exists there
-    pub fn insert(&mut self, x: i64, y: i64) {
+    pub fn insert(&mut self, x: i64, y: i64, color: usize) {
         let nearest = get_nearest(x, y);
         let region = if let Some(region) = self.tree.get(&nearest) {
             *region
@@ -88,6 +90,7 @@ impl RegionTree {
         self.regions[region].cells[(y - nearest.1) as usize][(x - nearest.0) as usize] =
             self.cells.len();
         self.cells.push((x, y));
+        self.colors.push(color);
 
         self.update_regions();
     }
