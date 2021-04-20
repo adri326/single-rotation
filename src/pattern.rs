@@ -1,4 +1,6 @@
 use super::{nearest_region, Region, RegionTree, REGION_SIZE, NEIGHBORS};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub fn get_island(tree: &RegionTree, x: i64, y: i64, max_size: usize) -> Vec<(i64, i64)> {
     let (x, y) = nearest_region(x, y);
@@ -186,4 +188,14 @@ fn test_get_pattern() {
         assert_eq!(get_patterns(&tree, 0), vec![pattern]);
         assert_eq!(get_patterns(&tree, 1), vec![]);
     }
+}
+
+pub fn hash_pattern(pattern: &Pattern) -> u64 {
+    let mut hasher = DefaultHasher::new();
+
+    hasher.write_usize(pattern.width);
+    hasher.write_usize(pattern.height);
+    pattern.contents.hash(&mut hasher);
+
+    hasher.finish()
 }
