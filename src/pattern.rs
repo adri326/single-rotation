@@ -67,6 +67,7 @@ fn test_get_island() {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Pattern {
     pub contents: Vec<bool>,
+    pub cells: Vec<usize>,
     pub width: usize,
     pub height: usize,
     pub x: i64,
@@ -125,6 +126,7 @@ pub fn isolate_pattern(x: i64, y: i64, regions: Vec<&Region>) -> Pattern {
     let height = (max_y - min_y + 1) as usize;
 
     let mut contents = vec![false; width * height];
+    let mut cells = vec![0; width * height];
 
     for region in &regions {
         for (y, row) in region.cells.iter().enumerate() {
@@ -133,17 +135,18 @@ pub fn isolate_pattern(x: i64, y: i64, regions: Vec<&Region>) -> Pattern {
                 for (x, &cell) in row.iter().enumerate() {
                     let x = region.x + x as i64;
                     if cell > 0 && x >= min_x && x <= max_x {
-                        contents[(x - min_x) as usize + ((y - min_y) as usize) * width] = true;
+                        let index = (x - min_x) as usize + ((y - min_y) as usize) * width;
+                        cells[index] = cell;
+                        contents[index] = true;
                     }
                 }
             }
         }
     }
 
-    println!("{:?}", contents);
-
     Pattern {
         contents,
+        cells,
         width,
         height,
         x: min_x,
