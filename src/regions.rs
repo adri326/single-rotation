@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use super::hash::RegionHashState;
 
 /// The width and height of a "region", or partition of the 2D plane
 pub const REGION_SIZE: usize = 16;
@@ -25,6 +26,7 @@ pub struct Region {
     pub cells: [[usize; REGION_SIZE]; REGION_SIZE],
     pub neighbors: [Option<usize>; 8],
     pub n_cells: usize,
+    pub state: RegionHashState,
 }
 
 /// Holds a grid of `Region`s and a list of cells
@@ -46,6 +48,7 @@ impl Region {
             cells: [[0; REGION_SIZE]; REGION_SIZE],
             neighbors: [None; 8],
             n_cells: 0,
+            state: RegionHashState::Empty,
         }
     }
 }
@@ -245,7 +248,7 @@ impl RegionTree {
     }
 
     /// Update a single 2x2 square, given the set of neighboring regions
-    fn update_single(
+    pub fn update_single(
         &mut self,
         x: usize,
         y: usize,
@@ -293,7 +296,7 @@ impl RegionTree {
 
 /// Update all of the 2x2 square fully enclosed within a region
 #[inline]
-fn update_simple(region: &mut Region, cells: &mut Vec<(i64, i64)>, offset: usize, len: usize) {
+pub fn update_simple(region: &mut Region, cells: &mut Vec<(i64, i64)>, offset: usize, len: usize) {
     for sy in 0..len {
         let y = sy + sy + offset;
         for sx in 0..len {
