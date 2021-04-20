@@ -1,4 +1,4 @@
-use super::{nearest_region, RegionTree, REGION_SIZE, NEIGHBORS};
+use super::{nearest_region, Region, RegionTree, REGION_SIZE, NEIGHBORS};
 
 pub fn get_island(tree: &RegionTree, x: i64, y: i64, max_size: usize) -> Vec<(i64, i64)> {
     let (x, y) = nearest_region(x, y);
@@ -31,18 +31,40 @@ pub fn get_island(tree: &RegionTree, x: i64, y: i64, max_size: usize) -> Vec<(i6
     res
 }
 
+
+pub fn get_islands(tree: &RegionTree, max_size: usize) -> Vec<Vec<(i64, i64)>> {
+    let mut islands: Vec<Vec<(i64, i64)>> = Vec::new();
+
+    for region in &tree.regions {
+        if region.n_cells == 0
+            || islands.iter().any(|island| island.iter().any(|(x, y)| *x == region.x && *y == region.y)) {
+            continue
+        }
+
+        let island = get_island(tree, region.x, region.y, max_size);
+        if (max_size == 0 || island.len() < max_size) && island.len() != 0 {
+            islands.push(island);
+        }
+    }
+
+    islands
+}
+
 #[test]
 fn test_get_island() {
     let mut tree = RegionTree::new();
     tree.insert(0, 0, 0);
     assert_eq!(get_island(&tree, 0, 0, 0), vec![(0, 0)]);
+    assert_eq!(get_islands(&tree, 0), vec![vec![(0, 0)]]);
     tree.insert(REGION_SIZE as i64, 0, 0);
     assert_eq!(get_island(&tree, 0, 0, 0), vec![(0, 0), (REGION_SIZE as i64, 0)]);
+    assert_eq!(get_islands(&tree, 0), vec![vec![(0, 0), (REGION_SIZE as i64, 0)]]);
     assert_eq!(get_island(&tree, 0, 0, 1), vec![(0, 0)]);
+    assert_eq!(get_islands(&tree, 1).len(), 0);
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Ship {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Pattern {
     contents: Vec<bool>,
     width: usize,
     height: usize,
@@ -50,16 +72,34 @@ pub struct Ship {
     y: i64,
 }
 
-pub fn get_ship(tree: &RegionTree, x: i64, y: i64, max_size: usize) -> Option<Ship> {
+pub fn get_pattern(tree: &RegionTree, x: i64, y: i64, max_size: usize) -> Option<Pattern> {
     let regions = get_island(tree, x, y, max_size).into_iter().map(|i| &tree.regions[tree.hashmap[&i]]).collect::<Vec<_>>();
-    let mut min_x = x;
-    let mut max_x = x;
-    let mut min_y = y;
-    let mut max_y = y;
 
     if regions.len() == 0 {
         return None
     }
+
+    Some(isolate_pattern(x, y, regions))
+}
+
+pub fn get_patterns(tree: &RegionTree, max_size: usize) -> Vec<Pattern> {
+    let islands = get_islands(tree, max_size);
+    let mut res = Vec::with_capacity(islands.len());
+
+    for island in islands {
+        let (x, y) = island[0];
+        let regions = island.into_iter().map(|i| &tree.regions[tree.hashmap[&i]]).collect::<Vec<_>>();
+        res.push(isolate_pattern(x, y, regions));
+    }
+
+    res
+}
+
+pub fn isolate_pattern(x: i64, y: i64, regions: Vec<&Region>) -> Pattern {
+    let mut min_x = x;
+    let mut max_x = x;
+    let mut min_y = y;
+    let mut max_y = y;
 
     // get width and height
     for region in &regions {
@@ -96,27 +136,34 @@ pub fn get_ship(tree: &RegionTree, x: i64, y: i64, max_size: usize) -> Option<Sh
 
     println!("{:?}", contents);
 
-    Some(Ship {
+    Pattern {
         contents,
         width,
         height,
         x: min_x,
         y: min_y
-    })
+    }
 }
 
 #[test]
-fn test_get_ship() {
+fn test_get_pattern() {
     let mut tree = RegionTree::new();
     tree.insert(0, 0, 0);
 
-    assert_eq!(get_ship(&tree, 0, 0, 0), Some(Ship {
+    assert_eq!(get_pattern(&tree, 0, 0, 0), Some(Pattern {
         contents: vec![true],
         width: 1,
         height: 1,
         x: 0,
         y: 0
     }));
+    assert_eq!(get_patterns(&tree, 0), vec![Pattern {
+        contents: vec![true],
+        width: 1,
+        height: 1,
+        x: 0,
+        y: 0
+    }]);
 
     tree.insert(REGION_SIZE as i64, 0, 0);
 
@@ -127,12 +174,16 @@ fn test_get_ship() {
             contents.push(false);
         }
         contents.push(true);
-        assert_eq!(get_ship(&tree, 0, 0, 0), Some(Ship {
+        let pattern = Pattern {
             contents: contents,
             width: 1 + REGION_SIZE,
             height: 1,
             x: 0,
             y: 0
-        }));
+        };
+        assert_eq!(get_pattern(&tree, 0, 0, 0), Some(pattern.clone()));
+
+        assert_eq!(get_patterns(&tree, 0), vec![pattern]);
+        assert_eq!(get_patterns(&tree, 1), vec![]);
     }
 }
