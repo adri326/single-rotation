@@ -9,6 +9,8 @@ use regions::*;
 pub mod display;
 pub mod lanczos;
 pub mod pattern;
+pub mod hash;
+use pattern::Pattern;
 
 fn main() {
     let graphical = std::env::args().any(|arg| arg == "-g");

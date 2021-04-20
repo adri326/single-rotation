@@ -1,6 +1,5 @@
-use super::{nearest_region, Region, RegionTree, REGION_SIZE, NEIGHBORS};
-use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use super::{nearest_region, Region, RegionTree, REGION_SIZE, NEIGHBORS};
 
 pub fn get_island(tree: &RegionTree, x: i64, y: i64, max_size: usize) -> Vec<(i64, i64)> {
     let (x, y) = nearest_region(x, y);
@@ -67,11 +66,16 @@ fn test_get_island() {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Pattern {
-    contents: Vec<bool>,
-    width: usize,
-    height: usize,
-    x: i64,
-    y: i64,
+    pub contents: Vec<bool>,
+    pub width: usize,
+    pub height: usize,
+    pub x: i64,
+    pub y: i64,
+
+    pub min_x: i64,
+    pub min_y: i64,
+    pub max_x: i64,
+    pub max_y: i64,
 }
 
 pub fn get_pattern(tree: &RegionTree, x: i64, y: i64, max_size: usize) -> Option<Pattern> {
@@ -143,7 +147,11 @@ pub fn isolate_pattern(x: i64, y: i64, regions: Vec<&Region>) -> Pattern {
         width,
         height,
         x: min_x,
-        y: min_y
+        y: min_y,
+        min_x,
+        max_x,
+        min_y,
+        max_y,
     }
 }
 
@@ -190,12 +198,11 @@ fn test_get_pattern() {
     }
 }
 
-pub fn hash_pattern(pattern: &Pattern) -> u64 {
-    let mut hasher = DefaultHasher::new();
-
-    hasher.write_usize(pattern.width);
-    hasher.write_usize(pattern.height);
-    pattern.contents.hash(&mut hasher);
-
-    hasher.finish()
+impl Hash for Pattern {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.width.hash(state);
+        self.height.hash(state);
+        (self.x.rem_euclid(2) as u8 + ((self.y.rem_euclid(2)) as u8) * 2).hash(state);
+        self.contents.hash(state);
+    }
 }
